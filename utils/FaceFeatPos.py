@@ -13,9 +13,13 @@ class getFace:
             raise ValueError("Please provide an image in the form of a numpy array find its face")
         
         self.face_detector = dlib.get_frontal_face_detector()
+        self.grey = cv2.cvtColor(self.image_face, cv2.COLOR_BGR2GRAY)
     
     def getFeatures(self):
-        
+        rects = self.face_detector(self.grey, 1)
+
+        pp(rects)
+        return rects
 
 
 
@@ -26,4 +30,4 @@ if __name__ == "__main__":
         pp(v)
         face = getFace(cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/yourface0.jpg"))
 
-    pp(type(np.array([2, 3]))==np.ndarray)
+    pp(face.getFeatures())
