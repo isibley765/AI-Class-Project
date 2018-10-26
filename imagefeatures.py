@@ -7,7 +7,7 @@ from scipy import spatial
 import cPickle as pickle
 import random
 import os
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # Feature extractor
 def extract_features(image_path, vector_size=32):
@@ -91,8 +91,9 @@ class Matcher(object):
 
 def show_img(path):
     img = cv2.imread(path)
-    plt.imshow(img)
-    plt.show()
+    cv2.imshow('image',img)
+    cv2.waitKey(1000)
+    cv2.destroyAllWindows()
 
 def run():
     images_path = './images/'
@@ -109,7 +110,7 @@ def run():
 
     ma = Matcher('features.pck')
     mt = Matcher('textures.pck')
-    """
+    
     for j in range(len(sample)):
         print 'Query image =========================================='
         show_img(sample[j])
@@ -120,7 +121,7 @@ def run():
             # more they similar, thus we subtruct it from 1 to get match value
             print 'Match %s' % (1-match[i])
             show_img(os.path.join(images_path, names[i]))
-    """
+    
 
 run()
 
