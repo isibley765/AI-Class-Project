@@ -5,7 +5,56 @@ import numpy as np
 from copy import deepcopy
 from pprint import pprint as pp
 
-from utils.FaceFeatPos import getFace
+from utils.FaceFeatPos import GetFace
+
+class PathList:
+    def __init__(self, path, images=None, name=None):
+        self.path = path
+        self.images = []
+        self.name = name
+
+        self.shape = None
+
+        if type(images) == list:
+            self.addImageList(images)
+        elif images is not None:
+            raise ValueError("images parameter must be a List if present, even if only one image present")
+    
+    def addImage(self, image, name):
+        if type(image) is np.ndarray:
+            if not self.shape:
+                self.shape = image.shape
+            
+            if image.shape == self.shape:
+                self.images.append({"img": image, "name": name})
+            else:
+                raise ValueError("Images must be of the same size for averaging")
+        else:
+            raise ValueError("Only numpy array images allowed in PathList instances, for simplicity")
+    
+    def addImageList(self, images):
+        if type(images) == list:
+            for image in images:
+                self.addImage(image["img"], image["name"])
+        else:
+            raise ValueError("PathList: images are Lists or Bust on initialization and addImageList calls")
+    
+    def getAllImages(self):
+        return self.images
+    
+    def getImageAverage(self):
+        if len(images) != 0:
+            avg = np.zeros(self.shape, np.float32)
+
+            N = len(images)
+            for image in images:
+                avg += image["img"].astype(np.float32) / N
+            
+            return avg
+        
+        else:
+            return np.zeros(1, dtype=np.uint8)
+
 
 class FaceBucketMaster:
     def __init__(self, imageList=None, bucketList=None):
@@ -80,19 +129,20 @@ class FaceBucketMaster:
         imageList is a list of their images
         affine is boolean, whether to do an affine transformation or not
     """
-    def makeBins(self, name, imageList, affine=False):
+    def makeBins(self, name, imageList, affine=False, avg=False):
         bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
         namebucket = os.path.join(bucket, name)
+
         pp("Making {}'s training folder".format(name))
 
         looks = {
-            "SL": os.path.join(namebucket, "SL"),   # Slight left or right
-            "SR": os.path.join(namebucket, "SR"),
-            "L":  os.path.join(namebucket, "L"),    # Normal left, right, or center
-            "R":  os.path.join(namebucket, "R"),
-            "C":  os.path.join(namebucket, "C"),
-            "HL": os.path.join(namebucket, "HL"),   # Hard left or right
-            "HR": os.path.join(namebucket, "HR"),
+            "SL": PathList(os.path.join(namebucket, "SL"), name=name),   # Slight left or right
+            "SR": PathList(os.path.join(namebucket, "SR"), name=name),
+            "L":  PathList(os.path.join(namebucket, "L"), name=name),    # Normal left, right, or center
+            "R":  PathList(os.path.join(namebucket, "R"), name=name),
+            "C":  PathList(os.path.join(namebucket, "C"), name=name),
+            "HL": PathList(os.path.join(namebucket, "HL"), name=name),   # Hard left or right
+            "HR": PathList(os.path.join(namebucket, "HR"), name=name),
             "step": 0.15
         }
 
@@ -105,11 +155,11 @@ class FaceBucketMaster:
             os.makedirs(namebucket)
 
         for sub in looks.keys():
-            if sub != "step" and not os.path.exists(looks[sub]):
-                os.makedirs(looks[sub])
+            if sub != "step" and not os.path.exists(looks[sub].path):
+                os.makedirs(looks[sub].path)
         
         for image in imageList:
-            feat = getFace(image["img"])
+            feat = GetFace(image["img"])
 
             pose = feat.findAngle()
             affout = feat.warpFaceFront()
@@ -124,21 +174,37 @@ class FaceBucketMaster:
                 pose = pose[0]
                 affout = affout[0]
                 if pose[1] < -looks["step"]*3:
-                    out = os.path.join(looks["HL"], image["name"])
+                    out = "HL"
                 elif pose[1] < -looks["step"]*2:
-                    out = os.path.join(looks["L"], image["name"])
+                    out = "L"
                 elif pose[1] < -looks["step"]:
-                    out = os.path.join(looks["SL"], image["name"])
+                    out = "SL"
                 elif pose[1] > looks["step"]*3:
-                    out = os.path.join(looks["HR"], image["name"])
+                    out = "HR"
                 elif pose[1] > looks["step"]*2:
-                    out = os.path.join(looks["R"], image["name"])
+                    out = "R"
                 elif pose[1] > looks["step"]:
-                    out = os.path.join(looks["SR"], image["name"])
+                    out = "SR"
                 else:
-                    out = os.path.join(looks["C"], image["name"])
-            
-                cv2.imwrite(out, affout if affine else image["img"])
+                    out = "C"
+
+                if affine:
+                    looks[out].addImage(affout, image["name"])
+                    pp("Adding image {} to {}".format(image["name"], out))
+                else:
+                    cv2.imwrite(os.path.join(looks[out].path, image["name"]), image["img"])
+        
+        if affine:
+            for sub in looks.keys():
+                if sub != "step":
+                    pp(sub+":")
+                    for image in looks[sub].getAllImages():
+                        pp("    "+image["name"])
+                    if avg:
+                        cv2.imwrite(os.path.join(looks[sub].path, looks[sub].name+"_"+sub+".jpg"), looks[sub].getImageAverage())
+                    else:
+                        for image in looks[sub].getAllImages():
+                            cv2.imwrite(os.path.join(looks[sub].path, image["name"]), image["img"])
 
 
 
@@ -151,4 +217,4 @@ if __name__ == "__main__":
     # /home/rovian/Desktop/aligned_images_DB/
     # ./sets/
 
-    f.getPeople("./smallset/", affine=True)
+    f.getPeople("/home/rovian/Documents/GitHub/head-pose-estimation/self/", affine=True)

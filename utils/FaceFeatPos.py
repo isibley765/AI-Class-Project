@@ -10,7 +10,7 @@ import cv2
 
 CNN_INPUT_SIZE = 128
 
-class getFace:  # Presets based on operating in the parent folder of utils, despite this file being located in it
+class GetFace:  # Presets based on operating in the parent folder of utils, despite this file being located in it
     # Points based on the outter eye corners and bottom chin point for the default predictor model, please update both together
     def __init__(self, image_face=None, predict="./utils/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45]):
         """
