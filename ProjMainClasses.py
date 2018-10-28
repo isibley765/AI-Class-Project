@@ -119,7 +119,7 @@ class FaceBucketMaster:
                 else:
                     out = os.path.join(looks["C"], image["name"])
             
-            cv2.imwrite(out, image["img"])
+                cv2.imwrite(out, image["img"])
 
 
 
