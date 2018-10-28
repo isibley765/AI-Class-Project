@@ -43,17 +43,17 @@ class PathList:
         return self.images
     
     def getImageAverage(self):
-        if len(images) != 0:
+        if len(self.images) != 0:
             avg = np.zeros(self.shape, np.float32)
 
-            N = len(images)
-            for image in images:
+            N = len(self.images)
+            for image in self.images:
                 avg += image["img"].astype(np.float32) / N
             
-            return avg
+            return np.round(avg).astype(np.uint8)
         
         else:
-            return np.zeros(1, dtype=np.uint8)
+            return None
 
 
 class FaceBucketMaster:
@@ -100,6 +100,12 @@ class FaceBucketMaster:
                     images += self.takeFolder(tryImage)
         
         return images
+    
+    def sampleRand40(self, list40):
+        if len(list40) > 40:
+            return [list40[i] for i in sorted(random.sample(range(len(list40)), 40))]
+        else:
+            return list40
 
     """
         Expects a directory labeled by name, with images inside, possibly in subfolders
@@ -109,16 +115,18 @@ class FaceBucketMaster:
         affine depicts whether the re-sorting is done with original images, or
         scaled 256x256 images of just the face
     """
-    def getPeople(self, path, affine=False):
-        names = sorted(os.listdir(path))
+    def getPeople(self, path, affine=False, avg=False):
+        if avg and not affine:
+            avg = False
+            pp("Can't average non-affine corrected images, skipping average")
+
+        names = self.sampleRand40(sorted(os.listdir(path)))
+        
         for name in names:
             namepath = os.path.join(path, name)
             if os.path.isdir(namepath):
-                images = self.takeFolder(namepath)
-                if len(images) > 40: # Find random sample of 40 from list that's bigger than 40
-                    images = [images[i] for i in sorted(random.sample(range(len(images)), 40))]
-                pp(len(images))
-                self.makeBins(name, images, affine)
+                images = self.sampleRand40(self.takeFolder(namepath))
+                self.makeBins(name, images, affine, avg)
     
     """
         This function takes a folder named for the person it represents,
@@ -130,6 +138,10 @@ class FaceBucketMaster:
         affine is boolean, whether to do an affine transformation or not
     """
     def makeBins(self, name, imageList, affine=False, avg=False):
+        if avg and not affine:
+            avg = False
+            pp("Can't average non-affine corrected images, skipping average")
+        
         bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
         namebucket = os.path.join(bucket, name)
 
@@ -151,12 +163,13 @@ class FaceBucketMaster:
             os.makedirs(bucket)
               
         if not os.path.exists(namebucket):
-            pp(namebucket)
+            # pp(namebucket)
             os.makedirs(namebucket)
 
-        for sub in looks.keys():
-            if sub != "step" and not os.path.exists(looks[sub].path):
-                os.makedirs(looks[sub].path)
+        if not avg:
+            for sub in looks.keys():
+                if sub != "step" and not os.path.exists(looks[sub].path):
+                    os.makedirs(looks[sub].path)
         
         for image in imageList:
             feat = GetFace(image["img"])
@@ -190,18 +203,16 @@ class FaceBucketMaster:
 
                 if affine:
                     looks[out].addImage(affout, image["name"])
-                    pp("Adding image {} to {}".format(image["name"], out))
                 else:
                     cv2.imwrite(os.path.join(looks[out].path, image["name"]), image["img"])
         
         if affine:
             for sub in looks.keys():
                 if sub != "step":
-                    pp(sub+":")
-                    for image in looks[sub].getAllImages():
-                        pp("    "+image["name"])
                     if avg:
-                        cv2.imwrite(os.path.join(looks[sub].path, looks[sub].name+"_"+sub+".jpg"), looks[sub].getImageAverage())
+                        sumPic = looks[sub].getImageAverage()
+                        if type(sumPic) == np.ndarray:
+                            cv2.imwrite(os.path.join(namebucket, looks[sub].name+"_"+sub+".jpg"), sumPic)
                     else:
                         for image in looks[sub].getAllImages():
                             cv2.imwrite(os.path.join(looks[sub].path, image["name"]), image["img"])
@@ -217,4 +228,4 @@ if __name__ == "__main__":
     # /home/rovian/Desktop/aligned_images_DB/
     # ./sets/
 
-    f.getPeople("/home/rovian/Documents/GitHub/head-pose-estimation/self/", affine=True)
+    f.getPeople("./sets/", affine=True, avg=True)
