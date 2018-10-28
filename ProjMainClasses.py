@@ -1,5 +1,6 @@
 import os
 import cv2
+import random
 import numpy as np
 from copy import deepcopy
 from pprint import pprint as pp
@@ -56,12 +57,16 @@ class FaceBucketMaster:
         Moves images to local image repo with L/R/C categories for further processing
         Doesn't load locally and keep just in RAM, because that blows up into huge memory real fast
     """
-    def getPeople(self, path):  
-        for name in os.listdir(path):
+    def getPeople(self, path):
+        names = sorted(os.listdir(path))
+        for name in names:
             namepath = os.path.join(path, name)
             if os.path.isdir(namepath):
                 images = self.takeFolder(namepath)
-                self.makeBins(name, images[:40])
+                if len(images) > 40: # Find random sample of 40 from list that's bigger than 40
+                    images = [images[i] for i in sorted(random.sample(range(len(images)), 40))]
+                pp(len(images))
+                self.makeBins(name, images)
     
     def makeBins(self, name, imageList):
         bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
@@ -124,4 +129,4 @@ if __name__ == "__main__":
     # f.takeFolder("/home/rovian/Desktop/aligned_images_DB/Abel_Pacheco")
     # f.addImage("/home/rovian/Documents/GitHub/head-pose-estimation/yourface1.jpg")
 
-    f.getPeople("./sets/")
+    f.getPeople("/home/rovian/Desktop/aligned_images_DB/")
