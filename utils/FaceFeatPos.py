@@ -13,6 +13,14 @@ CNN_INPUT_SIZE = 128
 class getFace:  # Presets based on operating in the parent folder of utils, despite this file being located in it
     # Points based on the outter eye corners and bottom chin point for the default predictor model, please update both together
     def __init__(self, image_face=None, predict="./utils/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45]):
+        """
+            Very accurate but slow:
+                ./utils/shape_predictor_68_face_landmarks.dat
+                
+            Faster, relatively accurate points, not accurate enough for angle finding:
+                ./utils/face_landmarks_68.dat
+        """
+        
         if type(image_face)==np.ndarray:
             self.orig_size = (len(image_face[0]), len(image_face))
             self.image_face = image_face # cv2.resize(image_face, (CNN_INPUT_SIZE, CNN_INPUT_SIZE))
@@ -133,61 +141,24 @@ class getFace:  # Presets based on operating in the parent folder of utils, desp
 
         model[:, 0] = model[:, 0] * size/180 + size/2
         model[:, 1] = model[:, 1] * size/180 + size/2
-        
-        """
-        image = np.zeros([size, size, 3], dtype=np.uint8)
-        for point in model:
-            x = point[0]
-            y = point[1]
-            cv2.circle(image, (x, y), 1, (255, 0, 0), 2)
-        #cv2.rectangle(image, (l, t), (l+w, t+h), (0, 255, 0), 2)
-
-        self.show(image)
-        """
 
         return model
     
-    def warpFaceFront(self):
-        trio = np.array([[x[0], x[1]] for x in self.trioAdjust()], dtype=np.float32)
+    def warpFaceFront(self, size=256):
+        res = []
         
+        trio = np.array([[x[0], x[1]] for x in self.trioAdjust(size)], dtype=np.float32)
+                
         for i in range(0, len(self.feats)):
-            w = self.rects[i].width()
-            h = self.rects[i].height()
-            center = self.rects[i].center()
-            pp(self.image_face.shape)
-
-
-            wExtend = (w * 256/180) / 2
-            hExtend = (h * 256/180) / 2
-
-            pt1 = (center.x - wExtend, center.y - hExtend)
-            pt2 = (center.x + wExtend, center.y + hExtend)
-
-            chunk = self.grey[pt1[1]:pt2[1], pt1[0]:pt2[0]]
-            chank = self.image_face[pt1[1]:pt2[1], pt1[0]:pt2[0]]
-
-            """
-            image = deepcopy(self.image_face)
-            cv2.rectangle(image, pt1, pt2, (0, 255, 0), 2)
-            for point in self.feats[i]:
-                x = point[0]
-                y = point[1]
-                cv2.circle(image, (x, y), 1, (255, 0, 0), 2)
-            
-            self.show(image)
-            """
-            self.show(chunk)
-
-
             found3 = self.feats[i][self.indexTrio]
-            pp(found3)
-            pp(trio)
+                
+            affineM = cv2.getAffineTransform(found3, trio)  # maps found features to square image of lengths = size
+            
+            dst = cv2.warpAffine(self.grey, affineM, (size, size))
 
-            affineM = cv2.getAffineTransform(found3, trio)
-            pp(affineM)
-            dst = cv2.warpAffine(chunk, affineM, (pt2[1]-pt1[1], pt2[0]-pt1[0]))
-
-            self.show(dst)
+            res.append(dst)
+        
+        return res
 
     
 
@@ -260,7 +231,8 @@ class getFace:  # Presets based on operating in the parent folder of utils, desp
 if __name__ == "__main__":
     img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/twoface.jpg")
     face = getFace(img)
-    face.warpFaceFront()
+    for img in face.warpFaceFront():
+        face.show(img)
     """
 
     # cv2.circle(img, tuple(face.feats[0][33]), 1, (0, 0, 255), 2) # 33'd index is the tip of the nose
