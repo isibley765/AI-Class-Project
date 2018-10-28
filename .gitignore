@@ -1,5 +1,6 @@
 # Ignoring all bucket items
 buckets/
+*set/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
