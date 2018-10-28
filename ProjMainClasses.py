@@ -61,7 +61,7 @@ class FaceBucketMaster:
             namepath = os.path.join(path, name)
             if os.path.isdir(namepath):
                 images = self.takeFolder(namepath)
-                self.makeBins(name, images)
+                self.makeBins(name, images[:40])
     
     def makeBins(self, name, imageList):
         bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
