@@ -230,7 +230,7 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
 
 if __name__ == "__main__":
     img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/twoface.jpg")
-    face = getFace(img)
+    face = GetFace(img)
     for img in face.warpFaceFront():
         face.show(img)
     """
@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
     for i in range(0, 9):
         img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/Ian_Sibley/yourface{}.jpg".format(i))
-        face = getFace(img)
+        face = GetFace(img)
         pose = face.findAngle()[0]
         print("u/d: {}\nl/r: {}\n".format(pose[0], pose[1]))
         face.show(face.draw_annotation_line(img, color=(255, 0, 0)))
