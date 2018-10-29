@@ -90,38 +90,58 @@ class FaceBucketMaster:
         affine is boolean, whether to do an affine transformation or not
     """
     def makeBins(self, name, imageList, affine=False, avg=False):
+        # both being true only takes affect if affine and average are true
         if avg and not affine:
             avg = False
             pp("Can't average non-affine corrected images, skipping average")
         
-        bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
+        bucket = os.path.join(os.path.join(os.getcwd(), "trial"))
         namebucket = os.path.join(bucket, name)
+
+        bins = ["SL", "SR", "L", "R", "C", "HL", "HR"]
+
+        predef = {
+            "name": {"path": namebucket},
+            "spectrums": {"path": os.path.join(namebucket, "spectrums")},
+            "step": 0.15
+        }
+
+        for key in predef.keys():
+            if key != "step":
+                for b in bins:
+                    predef[key][b] = PathList(os.path.join(predef[key]["path"], b), name=name)
+            """
+                EX:
+                {
+                    "path": namebucket
+                    "SL": PathList(os.path.join(namebucket, "SL"), name=name),   # Slight left or right
+                    "SR": PathList(os.path.join(namebucket, "SR"), name=name),
+                    "L":  PathList(os.path.join(namebucket, "L"), name=name),    # Normal left, right, or center
+                    "R":  PathList(os.path.join(namebucket, "R"), name=name),
+                    "C":  PathList(os.path.join(namebucket, "C"), name=name),
+                    "HL": PathList(os.path.join(namebucket, "HL"), name=name),   # Hard left or right
+                    "HR": PathList(os.path.join(namebucket, "HR"), name=name),
+                }
+            """
 
         pp("Making {}'s training folder".format(name))
 
-        looks = {
-            "SL": PathList(os.path.join(namebucket, "SL"), name=name),   # Slight left or right
-            "SR": PathList(os.path.join(namebucket, "SR"), name=name),
-            "L":  PathList(os.path.join(namebucket, "L"), name=name),    # Normal left, right, or center
-            "R":  PathList(os.path.join(namebucket, "R"), name=name),
-            "C":  PathList(os.path.join(namebucket, "C"), name=name),
-            "HL": PathList(os.path.join(namebucket, "HL"), name=name),   # Hard left or right
-            "HR": PathList(os.path.join(namebucket, "HR"), name=name),
-            "step": 0.15
-        }
 
         # These need to exist before we make the L, C, and R subfolders
         if not os.path.exists(bucket):
             os.makedirs(bucket)
-              
-        if not os.path.exists(namebucket):
-            # pp(namebucket)
-            os.makedirs(namebucket)
+        
 
-        if not avg:
-            for sub in looks.keys():
-                if sub != "step" and not os.path.exists(looks[sub].path):
-                    os.makedirs(looks[sub].path)
+        for key in predef.keys():
+            if key != "step":
+                if not os.path.exists(predef[key]["path"]):
+                    os.makedirs(predef[key]["path"])
+
+                for sub in predef[key].keys():
+                    if sub != "path":
+                        if not os.path.exists(predef[key][sub].path):
+                            os.makedirs(predef[key][sub].path)
+
         
         for image in imageList:
             feat = GetFace(image["img"])
@@ -138,36 +158,44 @@ class FaceBucketMaster:
             if len(affout) == 1:   # This means only one face has been found in the image
                 pose = pose[0]
                 affout = affout[0]
-                if pose[1] < -looks["step"]*3:
+                if pose[1] < -predef["step"]*3:
                     out = "HL"
-                elif pose[1] < -looks["step"]*2:
+                elif pose[1] < -predef["step"]*2:
                     out = "L"
-                elif pose[1] < -looks["step"]:
+                elif pose[1] < -predef["step"]:
                     out = "SL"
-                elif pose[1] > looks["step"]*3:
+                elif pose[1] > predef["step"]*3:
                     out = "HR"
-                elif pose[1] > looks["step"]*2:
+                elif pose[1] > predef["step"]*2:
                     out = "R"
-                elif pose[1] > looks["step"]:
+                elif pose[1] > predef["step"]:
                     out = "SR"
                 else:
                     out = "C"
 
                 if affine:
-                    looks[out].addImage(affout, image["name"])
+                    predef["name"][out].addImage(affout, image["name"])
+                    predef["spectrums"][out].addImage(feat.warpedFaceSpectrum([affout])[0], image["name"])
                 else:
-                    cv2.imwrite(os.path.join(looks[out].path, image["name"]), image["img"])
+                    cv2.imwrite(os.path.join(predef["name"][out].path, image["name"]), image["img"])
         
         if affine:
-            for sub in looks.keys():
-                if sub != "step":
+            genFace = GetFace(np.zeros((256, 256, 3), dtype=np.uint8))
+            for sub in predef["name"].keys():
+                if sub != "path":
                     if avg:
-                        sumPic = looks[sub].getImageAverage()
+                        sumPic = predef["name"][sub].getImageAverage()
+                        sumSpec = predef["spectrums"][sub].getImageAverage()
                         if type(sumPic) == np.ndarray:
-                            cv2.imwrite(os.path.join(namebucket, looks[sub].name+"_"+sub+".jpg"), sumPic)
-                    else:
-                        for image in looks[sub].getAllImages():
-                            cv2.imwrite(os.path.join(looks[sub].path, image["name"]), image["img"])
+                            cv2.imwrite(os.path.join(predef["name"]["path"], predef["name"][sub].name+"_"+sub+".jpg"), sumPic)
+                            cv2.imwrite(os.path.join(predef["name"]["path"], predef["name"][sub].name+"_"+sub+"_spec.jpg"), genFace.warpedFaceSpectrum([sumPic])[0])
+                            cv2.imwrite(os.path.join(predef["spectrums"]["path"], predef["spectrums"][sub].name+"_"+sub+".jpg"), sumSpec)
+
+                    bwnorm = predef["name"][sub].getAllImages()
+                    bwspec = predef["spectrums"][sub].getAllImages()
+                    for i in range(len(bwnorm)):
+                        cv2.imwrite(os.path.join(predef["name"][sub].path, bwnorm[i]["name"]), bwnorm[i]["img"])
+                        cv2.imwrite(os.path.join(predef["spectrums"][sub].path, bwspec[i]["name"]), bwspec[i]["img"])
 
 
 
@@ -180,4 +208,4 @@ if __name__ == "__main__":
     # /home/rovian/Desktop/aligned_images_DB/
     # ./sets/
 
-    # f.getPeople("/home/rovian/Desktop/aligned_images_DB/", affine=True, avg=True)
+    f.getPeople("./sets/", affine=True, avg=True)
