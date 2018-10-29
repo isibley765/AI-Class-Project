@@ -1,8 +1,8 @@
 from pprint import pprint as pp
 from copy import deepcopy
+# import face_recognition
 import numpy as np
 import argparse
-# import imutils
 import math
 import dlib
 import cv2
@@ -26,7 +26,6 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             self.image_face = image_face # cv2.resize(image_face, (CNN_INPUT_SIZE, CNN_INPUT_SIZE))
         else:
             raise ValueError("Please provide an image in the form of a numpy array find its face")
-        # pp(image_face)
         
         self.fullmodel = np.loadtxt(model, delimiter=",", dtype=np.float32)
         self.indexTrio = points
@@ -160,57 +159,17 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
         
         return res
 
-    
+    def warpedFaceSpectrum(self, images=None):
+        if images is None:
+            images = self.warpFaceFront()
+        
+        spectrum = []
+        for image in images:
+            s = np.asarray(20*np.log(np.abs(np.fft.fftshift(np.fft.fft2(image)))), dtype=np.uint8)
+            spectrum.append(s)
 
+        return spectrum
 
-    # TODO: Delete this method
-    # Line variant of box method, by Ian Sibley, baed on the head-pose-estimation github library
-    # Used only for visual appraisal during testing, not for algorithm completion
-    def draw_annotation_line(self, image, color=(255, 255, 255), line_width=2):
-        """Draw a 3D box as annotation of pose"""
-        image = deepcopy(image)
-
-        point_3d = []
-        rear_size = 0
-        rear_depth = 0
-        point_3d.append((0, 0, rear_depth))
-
-        front_size = 100
-        front_depth = 100
-        point_3d.append((0, 0, front_depth))
-
-        point_3d = np.array(point_3d, dtype=np.float).reshape(-1, 3)
-
-        if not self.rvec:
-            self.findAngle()
-            pp("Finding angle")
-
-        for i in range(0, len(self.rvec)):
-            # Map to 2d image points
-            (point_2d, _) = cv2.projectPoints(point_3d,
-                                            self.rvec[i],
-                                            self.tvec[i],
-                                            self.camera,
-                                            np.zeros((4, 1)))
-            point_2d = np.int32(point_2d.reshape(-1, 2))
-
-            # Draw all the lines
-            cv2.polylines(image, [point_2d], True, color, line_width, cv2.LINE_AA)
-
-        return image
-
-        # Line variant of box method, by Ian Sibley, baed on the head-pose-estimation github library
-    def draw_angle_line(self, image, angle, start, color=(255, 255, 255), line_width=2):
-        rad = angle * 100 # rad = math.radians(angle*100)        
-        pointa = start
-        pointb = [pointa[0]+50*math.sin(rad), pointa[0]+50*math.cos(rad)]
-        point_2d = np.asarray([pointa, pointb], dtype=np.int32)
-        pp(point_2d)
-
-        # Draw all the lines
-        cv2.polylines(image, [point_2d], True, color, line_width, cv2.LINE_AA)
-
-        return image
     
     def show(self, image=None):
         try:    # Just in case made equal to undefined value?
@@ -229,11 +188,11 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
 
 
 if __name__ == "__main__":
+    """
     img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/twoface.jpg")
     face = GetFace(img)
-    for img in face.warpFaceFront():
+    for img in face.warpedFaceSpectrum():
         face.show(img)
-    """
 
     # cv2.circle(img, tuple(face.feats[0][33]), 1, (0, 0, 255), 2) # 33'd index is the tip of the nose
     face.show(face.draw_annotation_line(img, color=(255, 0, 0)))
@@ -257,3 +216,9 @@ if __name__ == "__main__":
         print("u/d: {}\nl/r: {}\n".format(pose[0], pose[1]))
         face.show(face.draw_annotation_line(img, color=(255, 0, 0)))
     """
+    
+    for i in range(0, 9):
+        img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/Ian_Sibley/yourface{}.jpg".format(i))
+        face = GetFace(img)
+        for img in face.warpedFaceSpectrum():
+            face.show(img)

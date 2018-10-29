@@ -1,6 +1,7 @@
 # Ignoring all bucket items
 buckets/
 *set/
+trial/
 *.zip
 
 # Byte-compiled / optimized / DLL files
