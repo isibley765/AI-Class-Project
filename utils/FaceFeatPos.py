@@ -12,13 +12,13 @@ CNN_INPUT_SIZE = 128
 
 class GetFace:  # Presets based on operating in the parent folder of utils, despite this file being located in it
     # Points based on the outter eye corners and bottom chin point for the default predictor model, please update both together
-    def __init__(self, image_face=None, predict="./utils/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45]):
+    def __init__(self, image_face=None, predict="./assets/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45]):
         """
             Very accurate but slow:
-                ./utils/shape_predictor_68_face_landmarks.dat
+                ./assets/shape_predictor_68_face_landmarks.dat
                 
             Faster, relatively accurate points, not accurate enough for angle finding:
-                ./utils/face_landmarks_68.dat
+                ./assets/face_landmarks_68.dat
         """
         
         if type(image_face)==np.ndarray:
