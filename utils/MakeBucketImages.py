@@ -13,7 +13,7 @@ class FaceBucketMaster:
         if type(imageList) == list:
             self.images = deepcopy(imageList)
         else:
-            self.images = {}
+            self.images = []
         
         if type(bucketList) == list:
             self.bucketList = deepcopy(bucketList)
@@ -67,18 +67,19 @@ class FaceBucketMaster:
         affine depicts whether the re-sorting is done with original images, or
         scaled 256x256 images of just the face
     """
-    def getPeople(self, path, affine=False, avg=False):
+    def getPeople(self, path, affine=True, avg=True, endFolder=None):
         if avg and not affine:
             avg = False
             pp("Can't average non-affine corrected images, skipping average")
 
         names = self.sampleRand40(sorted(os.listdir(path)))
+        pp("Outputting at {}".format(endFolder))
         
         for name in names:
             namepath = os.path.join(path, name)
             if os.path.isdir(namepath):
                 images = self.sampleRand40(self.takeFolder(namepath))
-                self.makeBins(name, images, affine, avg)
+                self.makeBins(name, images, affine=affine, avg=avg, endFolder=endFolder)
     
     """
         This function takes a folder named for the person it represents,
@@ -89,12 +90,16 @@ class FaceBucketMaster:
         imageList is a list of their images
         affine is boolean, whether to do an affine transformation or not
     """
-    def makeBins(self, name, imageList, affine=False, avg=False):
+    def makeBins(self, name, imageList, affine=False, avg=False, endFolder=None):
         if avg and not affine:
             avg = False
             pp("Can't average non-affine corrected images, skipping average")
         
-        bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
+        if type(endFolder) == str:
+            bucket = endFolder
+        else:
+            bucket = os.path.join(os.path.join(os.getcwd(), "buckets"))
+            
         namebucket = os.path.join(bucket, name)
 
         pp("Making {}'s training folder".format(name))

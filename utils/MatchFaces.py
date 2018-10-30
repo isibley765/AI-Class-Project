@@ -214,20 +214,25 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
     # Tries to check if image is Spectrum or Normal
     def show(self, image, delay=1000):
         if np.issubdtype(np.uint8, image.dtype):
-            self.showImage(image, delay)
+            self._showImage(image, delay)
         else:
-            self.showSpecImg(image, delay)
+            self._showSpecImg(image, delay)
 
     # Converts complex Fourier into something plottable
-    def showSpecImg(self, image, delay=1000):
-        self.showImage(np.asarray(20*np.log(np.abs(image)), dtype=np.uint8), delay)
+    def _showSpecImg(self, image, delay=1000):
+        self._showImage(np.asarray(20*np.log(np.abs(image)), dtype=np.uint8), delay)
         
     # General image display method
-    def showImage(self, image, delay=1000):
+    def _showImage(self, image, delay=1000):
+        if self.name is None:
+            name = "unknown"
+        else:
+            name = self.name
+        
         pp("None?: {}".format(image is None))
-        cv2.imshow("temp", image)
+        cv2.imshow(name, image)
         cv2.waitKey(delay)
-        cv2.destroyWindow("temp")
+        cv2.destroyWindow(name)
 
 if __name__ == "__main__":
     folderSet = TrainSet(path="./trial/Ian_Sibley", name="Ian_Sibley")
@@ -237,13 +242,14 @@ if __name__ == "__main__":
     # Test that all images came through
     for el in folderSet.buckets:
         pp(el)
-        for image in folderSet.snormed[el]:
-            folderSet.show(image, 500)
         
         for image in folderSet.averages["norm"][el]:
             pp("Average {}:".format(el))
-            folderSet.showImage(image)
+            folderSet.show(image)
     """
+        for image in folderSet.snormed[el]:
+            folderSet.show(image, 500)
+            
         for image in folderSet.lowFilter[el]:
             folderSet.show(image, 500)
 
@@ -258,9 +264,9 @@ if __name__ == "__main__":
             folderSet.show(image)
             
         for image in folderSet.imageBins[el]:
-            folderSet.showImage(image)
+            folderSet.show(image)
         
         for image in folderSet.averages["norm"][el]:
             pp("Average {}:".format(el))
-            folderSet.showImage(image)
+            folderSet.show(image)
     """

@@ -1,8 +1,10 @@
 # Ignoring all bucket items
 buckets/
 *set/
+*sets/
 trial/
 *.zip
+train*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

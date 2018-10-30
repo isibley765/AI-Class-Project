@@ -7,18 +7,27 @@ import math
 import dlib
 import cv2
 
+import os
+import json
+
 
 CNN_INPUT_SIZE = 128
 
 class GetFace:  # Presets based on operating in the parent folder of utils, despite this file being located in it
     # Points based on the outter eye corners and bottom chin point for the default predictor model, please update both together
-    def __init__(self, image_face=None, predict="./assets/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45]):
+    def __init__(self, image_face=None, predict="./assets/shape_predictor_68_face_landmarks.dat", model="./assets/model.txt", points=[8, 36, 45], mpoints=[8, 36, 45]):
         """
             Very accurate but slow:
-                ./assets/shape_predictor_68_face_landmarks.dat
+                predict="./assets/shape_predictor_68_face_landmarks.dat"
+                points=[8, 36, 45]
                 
             Faster, relatively accurate points, not accurate enough for angle finding:
-                ./assets/face_landmarks_68.dat
+                predict="./assets/face_landmarks_68.dat"
+                points=[66, 30, 40]
+
+            default model:
+                model="./assets/model.txt"
+                mpoints=[8, 36, 45]
         """
         
         if type(image_face)==np.ndarray:
@@ -27,8 +36,11 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
         else:
             raise ValueError("Please provide an image in the form of a numpy array find its face")
         
+        self.feats = None
+        self.rects = None
         self.fullmodel = np.loadtxt(model, delimiter=",", dtype=np.float32)
         self.indexTrio = points
+        self.modelTrio = mpoints
         self.cropScale = 256/180.0  # for later, using hard values below for now
         
         self.face_detector = dlib.get_frontal_face_detector()
@@ -53,42 +65,55 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             [[focus, 0, center[0]],
             [0, focus, center[1]],
             [0, 0, 1]], dtype="double")
-
-        self.feats = self.getFeatures()
+        
+        self.getFeatures()
     
     def getFeatures(self):  # For each face found (rect), find the designated points and return them
-        feats = []
+        if self.feats is None:
+            feats = []
 
-        self.rects = self.face_detector(self.grey, 2)
-        
-        """
-        image = deepcopy(self.image_face)
-        for point in self.fullmodel:
-            x = point[0]
-            y = point[1]
-            cv2.circle(image, (x, y), 1, (0, 255, 0), 2)
-        cv2.rectangle(image, (64, 64), (570, 380), (0, 255, 0), 2)
-        """
-
-        for rect in self.rects:
-
-            points = np.asarray([[point.x, point.y] for point in self.predictor(self.grey, rect).parts()], dtype=np.float32)
-            feats.append(points)
+            self.rects = self.face_detector(self.grey, 2)
             
             """
             image = deepcopy(self.image_face)
-            (x, y, w, h) = (rect.left(), rect.top(), rect.right() - rect.left(), rect.bottom() - rect.top())
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            for point in points:
+            for point in self.fullmodel:
                 x = point[0]
                 y = point[1]
-                cv2.circle(image, (x, y), 1, (0, 0, 255), 2)
-
-            self.show(image)
+                cv2.circle(image, (x, y), 1, (0, 255, 0), 2)
+            cv2.rectangle(image, (64, 64), (570, 380), (0, 255, 0), 2)
             """
 
+            for rect in self.rects:
 
-        return feats
+                points = np.asarray([[point.x, point.y] for point in self.predictor(self.grey, rect).parts()], dtype=np.float32)
+                feats.append(points)
+                
+                """
+                image = deepcopy(self.image_face)
+                (x, y, w, h) = (rect.left(), rect.top(), rect.right() - rect.left(), rect.bottom() - rect.top())
+                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+                model = self.modelAdjust(size=image.shape[0])
+                for point in points:
+                    x = point[0]
+                    y = point[1]
+                    cv2.circle(image, (x, y), 1, (0, 0, 255), 2)
+                for point in model:
+                    x = point[0]
+                    y = point[1]
+                    cv2.circle(image, (x, y), 1, (255, 0, 0), 2)
+                
+                for i in range(len(self.indexTrio)):
+                    cv2.circle(image, tuple(points[self.indexTrio[i]][:2]), 1, (0, 255, 0), 2)
+                    self.show(image)
+                    
+                    cv2.circle(image, tuple(model[self.modelTrio[i]][:2]), 1, (0, 255, 0), 2)
+                    self.show(image)
+
+                """
+            self.feats = feats
+
+        return self.feats
     
     def findAngle(self):
         self.rvec = []
@@ -121,6 +146,7 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
         model[:, 0] = model[:, 0] * size/180 + size/2
         model[:, 1] = model[:, 1] * size/180 + size/2
         
+        """
         image = np.zeros([size, size, 3], dtype=np.uint8)
         for point in model:
             x = point[0]
@@ -128,15 +154,16 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             cv2.circle(image, (x, y), 1, (0, 255, 0), 2)
         #cv2.rectangle(image, (l, t), (l+w, t+h), (0, 255, 0), 2)
 
-        for index in self.indexTrio:
+        for index in self.modelTrio:
             cv2.circle(image, tuple(model[index][:2]), 1, (0, 0, 255), 2)
 
         self.show(image)
+        """
 
         return model
     
     def trioAdjust(self, size=256): #   Only aimed to center the model on the image, with linear transforms might be useless
-        model = self.fullmodel[self.indexTrio]
+        model = self.fullmodel[self.modelTrio]
 
         model[:, 0] = model[:, 0] * size/180 + size/2
         model[:, 1] = model[:, 1] * size/180 + size/2
@@ -156,6 +183,26 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             dst = cv2.warpAffine(self.grey, affineM, (size, size))
 
             res.append(dst)
+        
+        return res
+    
+    def faceFront(self, size=256):
+        res = []
+        
+        for i in range(len(self.rects)):
+            w = self.rects[i].right() - self.rects[i].left()
+            h = self.rects[i].bottom() - self.rects[i].top()
+
+            wn = (w * size/180)/2
+            hn = (h * size/180)/2
+
+            center = [self.rects[i].center().x, self.rects[i].center().y]
+            tlcorner = [center[0]-wn, center[1]-hn]
+            brcorner = [center[0]+wn, center[1]+hn]
+            
+            image = cv2.resize(self.image_face[tlcorner[1]:brcorner[1],tlcorner[0]:brcorner[0]], (256, 256))
+
+            res.append(image)
         
         return res
 
@@ -182,13 +229,88 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             image = self.image_face
         
         cv2.imshow("Output", image)
-        cv2.waitKey(20000)
+        cv2.waitKey(2000)
         cv2.destroyWindow("Output")
 
 
 
+
+def mapImages(path="/home/rovian/Documents/GitHub/neural/sets/Barbara_Walters"):
+    
+    
+    out = []
+    pp(path)
+
+    for name in os.listdir(path):
+        tryName = os.path.join(path, name)
+        if os.path.isdir(tryName) and name != "spectrums":
+            out.extend(mapImages(tryName))
+        else:
+            if name.endswith("_spec.jpg"):
+                continue
+            elif name.endswith(".jpg"):
+                image = cv2.imread(tryName)
+                face = GetFace(image)
+                
+                template = face.faceFront()
+                if len(template) == 1:
+                    template = template[0]
+                    face.image_face = deepcopy(template)
+                    face.feats = None
+                    face.rects = None
+                    face.grey = cv2.cvtColor(face.image_face, cv2.COLOR_BGR2GRAY)
+
+                    feats = face.getFeatures()[0][face.indexTrio]
+
+                    t = [ [int(feat[0]), int(feat[1])] for feat in feats]
+
+                    out.append({"img": template, "trio": t})
+                else:
+                    pp("{} found {} faces?".format(tryName, len(feats)))
+
+                """
+                feats = face.getFeatures()
+                if len(feats) == 1:
+                    feats = feats[0]
+                    feats = [[ int(feat) for feat in feats[x]] for x in face.indexTrio]
+
+                    out.append({"image": tryName, "pointTrio": feats})
+                else:
+                    pp("{} found {} faces?".format(tryName, len(feats)))
+                """
+    return out
+
+def getFolderImageTrios(folder="/home/rovian/Documents/GitHub/neural/trial/", end="train.json"):
+    out = None
+    tpath = "./train/"
+    if not os.path.exists(tpath):
+        os.makedirs(tpath)
+
+    out = mapImages(path=folder)
+
+
+    for i in range(len(out)):
+        imgName = os.path.join(tpath, "image{}_out.jpg".format(i))
+        cv2.imwrite(imgName, out[i]["img"])
+        out[i]["img"] = imgName
+
+    with open(os.path.join(tpath, end), 'w') as file:
+        file.write(json.dumps(out, indent=4))
+
 if __name__ == "__main__":
+    getFolderImageTrios(folder="./smallset/")
     """
+    im = cv2.imread("./smallset/Ian_Sibley/C/yourface0.jpg")
+    face = GetFace(im)
+    
+    feats = face.faceFront()
+
+    for feat in feats:
+        pp
+        for point in feat["trio"]:
+            cv2.circle(feat["img"], tuple(point), 1, (0, 0, 255), 2) # 33'd index is the tip of the nose
+        face.show(feat["img"])
+
     img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/twoface.jpg")
     face = GetFace(img)
     for img in face.warpedFaceSpectrum():
@@ -215,10 +337,17 @@ if __name__ == "__main__":
         pose = face.findAngle()[0]
         print("u/d: {}\nl/r: {}\n".format(pose[0], pose[1]))
         face.show(face.draw_annotation_line(img, color=(255, 0, 0)))
-    """
+    
+    img = cv2.imread("/home/rovian/Documents/GitHub/neural/bigset/Aaron_Guiel/HL/aligned_detect_5.1979.jpg")
+    face = GetFace(img, predict="./assets/face_landmarks_68.dat", points=[66, 30, 40])
+    
+    for img in face.warpFaceFront():
+        face.show(img)
     
     for i in range(0, 9):
         img = cv2.imread("/home/rovian/Documents/GitHub/head-pose-estimation/self/Ian_Sibley/yourface{}.jpg".format(i))
-        face = GetFace(img)
-        for img in face.warpedFaceSpectrum():
-            face.show(img)
+        face = GetFace(img, predict="./assets/face_landmarks_68.dat", points=[66, 30, 40])
+        
+        for img in face.warpFaceFront():
+           face.show(img)
+    """
