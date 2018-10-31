@@ -9,6 +9,7 @@ import cv2
 
 import os
 import json
+import random
 
 
 CNN_INPUT_SIZE = 128
@@ -199,10 +200,12 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             center = [self.rects[i].center().x, self.rects[i].center().y]
             tlcorner = [center[0]-wn, center[1]-hn]
             brcorner = [center[0]+wn, center[1]+hn]
-            
-            image = cv2.resize(self.image_face[tlcorner[1]:brcorner[1],tlcorner[0]:brcorner[0]], (256, 256))
 
-            res.append(image)
+            image = self.image_face[tlcorner[1]:brcorner[1],tlcorner[0]:brcorner[0]]
+            if type(image) is np.ndarray and image.size > 0:
+                image = cv2.resize(image, (256, 256))
+
+                res.append(image)
         
         return res
 
@@ -241,7 +244,11 @@ def mapImages(path="/home/rovian/Documents/GitHub/neural/sets/Barbara_Walters"):
     out = []
     pp(path)
 
-    for name in os.listdir(path):
+    a = os.listdir(path)
+    if len(a) > 40:
+        a = [a[i] for i in sorted(random.sample(range(len(a)), 40))]
+
+    for name in a:
         tryName = os.path.join(path, name)
         if os.path.isdir(tryName) and name != "spectrums":
             out.extend(mapImages(tryName))
@@ -260,13 +267,17 @@ def mapImages(path="/home/rovian/Documents/GitHub/neural/sets/Barbara_Walters"):
                     face.rects = None
                     face.grey = cv2.cvtColor(face.image_face, cv2.COLOR_BGR2GRAY)
 
-                    feats = face.getFeatures()[0][face.indexTrio]
+                    feats = face.getFeatures()
+                    if len(feats) == 1:
+                        feats = feats[0][face.indexTrio]
 
-                    t = [ [int(feat[0]), int(feat[1])] for feat in feats]
+                        t = [ [int(feat[0]), int(feat[1])] for feat in feats]
 
-                    out.append({"img": template, "trio": t})
+                        out.append({"img": template, "trio": t})
+                    else:
+                        pp("Cropped {} found {} faces?".format(tryName, len(feats)))
                 else:
-                    pp("{} found {} faces?".format(tryName, len(feats)))
+                    pp("{} found {} faces?".format(tryName, len(template)))
 
                 """
                 feats = face.getFeatures()
@@ -280,7 +291,7 @@ def mapImages(path="/home/rovian/Documents/GitHub/neural/sets/Barbara_Walters"):
                 """
     return out
 
-def getFolderImageTrios(folder="/home/rovian/Documents/GitHub/neural/trial/", end="train.json"):
+def getFolderImageTrios(folder="/home/rovian/Documents/GitHub/neural/trial/", name="anon", end="train", mode='w'):
     out = None
     tpath = "./train/"
     if not os.path.exists(tpath):
@@ -290,15 +301,28 @@ def getFolderImageTrios(folder="/home/rovian/Documents/GitHub/neural/trial/", en
 
 
     for i in range(len(out)):
-        imgName = os.path.join(tpath, "image{}_out.jpg".format(i))
+        imgName = os.path.join(tpath, name+"image{}".format(i)+end+".jpg")
         cv2.imwrite(imgName, out[i]["img"])
         out[i]["img"] = imgName
 
-    with open(os.path.join(tpath, end), 'w') as file:
+    if mode == 'a':
+        with open(os.path.join(tpath, end+".json"), "r") as file:
+            x = json.loads(file.read())
+        out = out + x
+
+    with open(os.path.join(tpath, end+".json"), "w") as file:
         file.write(json.dumps(out, indent=4))
 
 if __name__ == "__main__":
-    getFolderImageTrios(folder="./smallset/")
+    start = "/home/rovian/Downloads/frame_images_DB/"
+    a = os.listdir(start)
+    if len(a) > 40:
+        a = [a[i] for i in sorted(random.sample(range(len(a)), 40))]
+    outType = 'w'
+
+    for name in a:
+        getFolderImageTrios(folder=os.path.join(start, name), name=name, end="train_big_norm", mode=outType)
+        outType = 'a'
     """
     im = cv2.imread("./smallset/Ian_Sibley/C/yourface0.jpg")
     face = GetFace(im)

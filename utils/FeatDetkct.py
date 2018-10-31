@@ -161,7 +161,7 @@ class TrioDetector:
         
         return False
     
-    def saveWeights(self, file="done_weightsTrioDetectorWeights.dat"):
+    def saveWeights(self, file="TrioDetectorWeights.dat"):
         self.model.save_weights(file)
 
     def saveModelArchitecture(self, file="done_arc_TrioDetector.json"):
@@ -203,9 +203,10 @@ class TrioDetector:
 
         
 if __name__ == "__main__":
-    td = TrioDetector(save=True, trainFile="./train/train_big.json")
+    # source venv bin activate
+    td = TrioDetector(save=True, trainFile="./train/train_big_norm.json")
     td.addWeights()
-    td.trainModel(epochs=50, steps=6)
+    #td.trainModel(epochs=20, steps=12)
     #td.saveModelArchitecture(file="./full_version2_acc.dat")
     
     path = "./train/train.json"
