@@ -44,7 +44,7 @@ class TrioDetector:
         self.labels = []
 
         # filesave = "{pixel_accuracy:.4e}_"+self.modelWeights[0]
-        filesave = self.modelWeights[0]
+        filesave = "TrioDetectorWeights.dat"
 
         self.callbacks = [ModelCheckpoint(filesave, monitor="pixel_accuracy", mode="max", save_best_only=True, save_weights_only=True)]
 
@@ -53,12 +53,11 @@ class TrioDetector:
         self.imgSize = (3, 256, 256)
 
         mainIn = layers.Input(shape=self.imgSize, name="TrioIn")
-        conv = layers.Conv2D(32, 6, strides=(2,2), data_format="channels_first")(mainIn)
 
 
-        y1 = self.makePointModel("point1", conv)
-        y2 = self.makePointModel("point2", conv)
-        y3 = self.makePointModel("point3", conv)
+        y1 = self.makePointModel("point1", mainIn)
+        y2 = self.makePointModel("point2", mainIn)
+        y3 = self.makePointModel("point3", mainIn)
 
         x = layers.concatenate([y1, y2, y3])
         x = layers.Reshape((3,2))(x)
@@ -68,7 +67,8 @@ class TrioDetector:
         self.compile()
     
     def makePointModel(self, name, tensIn):
-        x = layers.LeakyReLU()(tensIn)
+        conv = layers.Conv2D(32, 6, strides=(2,2), data_format="channels_first")(tensIn)
+        x = layers.LeakyReLU()(conv)
         x = layers.BatchNormalization()(x)
 
         size = 1
@@ -84,11 +84,15 @@ class TrioDetector:
     def compile(self):
         def pixel_loss(yTrue, yPred):
             a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            return a
+            b = K.sum(K.square(yTrue[0][1]-yPred[0][1]))
+            c = K.sum(K.square(yTrue[0][2]-yPred[0][2]))
+            return a+b+c
 
         def pixel_accuracy(yTrue, yPred):
             a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            return 1.0/(a)
+            b = K.sum(K.square(yTrue[0][1]-yPred[0][1]))
+            c = K.sum(K.square(yTrue[0][2]-yPred[0][2]))
+            return 1.0/(a+b+c)
 
         self.model.compile(
             optimizer="adagrad",
@@ -163,8 +167,8 @@ class TrioDetector:
         #fakeValidY = fakeValidY.reshape((1,)+fakeValidY.shape)
 
         self.model.fit_generator(
-            self.gen.flow(self.trainData, self.labels, batch_size=24),
-            steps_per_epoch=24, epochs=600, use_multiprocessing=True,
+            self.gen.flow(self.trainData, self.labels, batch_size=12),
+            steps_per_epoch=12, epochs=600, use_multiprocessing=True,
             callbacks=self.callbacks)
         
         if self.save:
