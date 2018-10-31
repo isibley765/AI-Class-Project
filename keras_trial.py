@@ -1,5 +1,5 @@
 from keras.preprocessing import image
-from keras.models import Sequential, model_from_json
+from keras.models import Sequential, model_from_json, Model
 from keras.callbacks import ModelCheckpoint
 from keras import layers
 import keras.backend as K
@@ -7,6 +7,7 @@ import keras.backend as K
 import os
 import cv2
 import json
+import random
 import numpy as np
 import PIL
 from pprint import pprint as pp
@@ -49,25 +50,45 @@ class TrioDetector:
 
         self.prepareTraining()
 
-        self.model = Sequential([
-            layers.Conv2D(32, 6, strides=(2,2), input_shape=(self.trainData[0].shape), data_format="channels_first"),
-            layers.Reshape((3, 169344)),
-            layers.Dense(32),
-            layers.ReLU(max_value=.3),
-            layers.Dense(2),
-        ])
+        self.imgSize = (3, 256, 256)
 
+        mainIn = layers.Input(shape=self.imgSize, name="TrioIn")
+        conv = layers.Conv2D(32, 6, strides=(2,2), data_format="channels_first")(mainIn)
+
+
+        y1 = self.makePointModel("point1", conv)
+        y2 = self.makePointModel("point2", conv)
+        y3 = self.makePointModel("point3", conv)
+
+        x = layers.concatenate([y1, y2, y3])
+        x = layers.Reshape((3,2))(x)
+
+        self.model = Model(inputs=[mainIn], outputs=[x])
+
+        self.compile()
+    
+    def makePointModel(self, name, tensIn):
+        x = layers.LeakyReLU()(tensIn)
+        x = layers.BatchNormalization()(x)
+
+        size = 1
+        for el in (32, 126, 126):   # found the hard way, couldn't get shape straight out of x easily
+            size *= el
+        
+        x = layers.Reshape((1, size))(x)
+        x = layers.Dense(24, activation="relu")(x)
+        pointOut = layers.Dense(2, name=name, activation="relu")(x)
+
+        return pointOut
+    
+    def compile(self):
         def pixel_loss(yTrue, yPred):
             a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            b = K.sum(K.square(yTrue[0][1]-yPred[0][1]))
-            c = K.sum(K.square(yTrue[0][2]-yPred[0][2]))
-            return a+b+c
+            return a
 
         def pixel_accuracy(yTrue, yPred):
             a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            b = K.sum(K.square(yTrue[0][1]-yPred[0][1]))
-            c = K.sum(K.square(yTrue[0][2]-yPred[0][2]))
-            return 1.0/(a+b+c)
+            return 1.0/(a)
 
         self.model.compile(
             optimizer="adagrad",
@@ -86,9 +107,8 @@ class TrioDetector:
             data = json.loads(f.read())
 
         for el in data:
-            # pp(el)
-            img = cv2.imread(el["img"], cv2.IMREAD_GRAYSCALE)
-            self.trainData.append(cv2.cvtColor(img,cv2.COLOR_GRAY2RGB).transpose())   # Only for greyscale images being put on a list later
+            img = cv2.imread(el["img"])
+            self.trainData.append(img.transpose())   # Only for greyscale images being put on a list later
 
             img = cv2.imread(el["img"])
             self.trainData.append(img.transpose())
@@ -139,40 +159,65 @@ class TrioDetector:
         fakeValidX = fakeValidX.reshape((1,)+fakeValidX.shape)
 
         fakeValidY = self.labels[0]
-        fakeValidY = fakeValidY.reshape((1,)+fakeValidY.shape)
+        
+        #fakeValidY = fakeValidY.reshape((1,)+fakeValidY.shape)
 
         self.model.fit_generator(
             self.gen.flow(self.trainData, self.labels, batch_size=24),
-            steps_per_epoch=24, epochs=100, use_multiprocessing=True,
-            callbacks=self.callbacks, validation_data=(fakeValidX, fakeValidY))
+            steps_per_epoch=24, epochs=600, use_multiprocessing=True,
+            callbacks=self.callbacks)
         
         if self.save:
             self.saveWeights()
     
     def runModel(self, file="trial_sets/Ian_Sibley/Ian_Sibley_L.jpg"):
         image = cv2.resize(cv2.imread(file), (256, 256))
-        img = np.asarray(image.transpose())   # Only for greyscale images being put on a list later
+        img = np.asarray(image.transpose())
         
-        points = self.model.predict(img.reshape((1,)+img.shape))
-
-        for p in points[0]:
-            cv2.circle(image, tuple(p), 1, (0, 0, 255), 2)
-        
-        self.show(image)
+        return self.model.predict(img.reshape((1,)+img.shape))
         
         
-    def show(self, img):
+    def show(self, img, delay=250):
         cv2.imshow("Model", img)
-        cv2.waitKey(250)
+        cv2.waitKey(delay)
         cv2.destroyAllWindows()
 
         
 if __name__ == "__main__":
-    td = TrioDetector(save=True)
+    td = TrioDetector(save=True, trainFile="./train/train_big.json")
     td.addWeights()
-    td.trainModel()
+    #td.trainModel()
+    #td.saveModelArchitecture(file="./full_version2_acc.dat")
     
-    path = "./smallset/"
+    path = "./train/train.json"
+
+
+    with open(path, "r") as f:
+        data = json.loads(f.read())
+    if len(data) > 40:
+        data = [data[i] for i in sorted(random.sample(range(len(data)), 40))]
+    train = []
+    imgs = []
+    pts = []
+
+    for el in data:
+        train.append(el["img"])   # Only for greyscale images being put on a list later
+        #train.append(cv2.resize(cv2.imread(el["img"]), (256, 256)))   # Only for greyscale images being put on a list later
+        pts.append(el["trio"])
+
+    for i in range(len(train)):
+        points = td.runModel(train[i])
+        image = cv2.resize(cv2.imread(train[i]), (256, 256))
+        pp(points[0].tolist())
+        pp([[int(y) for y in x] for x in points[0].tolist()])
+        pp(pts[i])
+        
+        for p in [[int(y) for y in x] for x in points[0].tolist()]:
+            cv2.circle(image, tuple(p), 1, (0, 0, 255), 2)
+        for p in pts[i]:
+            cv2.circle(image, tuple(p), 1, (255, 0, 0), 2)
+        
+        td.show(image, delay=500)
 
     """
     for name in os.listdir(path):
@@ -184,5 +229,10 @@ if __name__ == "__main__":
             else:
                 for f in os.listdir(bucket):
                     if f.endswith(".jpg"):
-                        td.runModel(file=os.path.join(bucket, f))
+                        points = td.runModel(file=os.path.join(bucket, f))
+
+                        for p in points[0]:
+                            cv2.circle(image, tuple(p), 1, (0, 0, 255), 2)
+                        
+                        td.show(image)
     """

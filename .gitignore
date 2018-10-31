@@ -5,6 +5,7 @@ buckets/
 trial/
 *.zip
 train*/
+*Weights.dat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
