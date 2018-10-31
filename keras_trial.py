@@ -46,7 +46,7 @@ class TrioDetector:
         # filesave = "{pixel_accuracy:.4e}_"+self.modelWeights[0]
         filesave = self.modelWeights[0]
 
-        self.callbacks = [ModelCheckpoint(filesave, monitor="pixel_accuracy", mode="max", save_best_only=True, save_weights_only=True)]
+        self.callbacks = [ModelCheckpoint(filesave, monitor="pixelavg_accuracy", mode="max", save_best_only=True, save_weights_only=True)]
 
         self.prepareTraining()
 
@@ -76,24 +76,43 @@ class TrioDetector:
             size *= el
         
         x = layers.Reshape((1, size))(x)
-        x = layers.Dense(24, activation="relu")(x)
-        pointOut = layers.Dense(2, name=name, activation="relu")(x)
+        x = layers.LeakyReLU()(x)
+        x = layers.Dense(24)(x)
+        x = layers.LeakyReLU()(x)
+        pointOut = layers.Dense(2, name=name)(x)
 
         return pointOut
     
     def compile(self):
         def pixel_loss(yTrue, yPred):
-            a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            return a
+            a = K.sum(K.square(yPred[0][0]-yTrue[0][0]))
+            b = K.sum(K.square(yPred[0][1]-yTrue[0][1]))
+            c = K.sum(K.square(yPred[0][2]-yTrue[0][2]))
+            return a+b+c
 
-        def pixel_accuracy(yTrue, yPred):
-            a = K.sum(K.square(yTrue[0][0]-yPred[0][0]))
-            return 1.0/(a)
+        def pixela_accuracy(yTrue, yPred):
+            a = K.sum(K.square(yPred[0][0]-yTrue[0][0]))
+            return (1.0/a)
+
+        def pixelb_accuracy(yTrue, yPred):
+            b = K.sum(K.square(yPred[0][1]-yTrue[0][1]))
+            return (1.0/b)
+
+        def pixelc_accuracy(yTrue, yPred):
+            c = K.sum(K.square(yPred[0][2]-yTrue[0][2]))
+            return (1.0/c)
+        
+        def pixelavg_accuracy(yTrue, yPred):
+            a = pixela_accuracy(yTrue, yPred)
+            b = pixelb_accuracy(yTrue, yPred)
+            c = pixelc_accuracy(yTrue, yPred)
+            return (a+b+c)/3.0
+
 
         self.model.compile(
             optimizer="adagrad",
             loss=pixel_loss,
-            metrics=[pixel_accuracy])
+            metrics=[pixelavg_accuracy,pixela_accuracy,pixelb_accuracy,pixelc_accuracy,])
         
     def prepareTraining(self, file=None):
         if file is None:
@@ -154,7 +173,7 @@ class TrioDetector:
     def saveWholeModel(self, file="done_whole_TrioDetector.dat"):
         self.model.save(file)
     
-    def trainModel(self):
+    def trainModel(self, epochs=50, steps=24):
         fakeValidX = self.trainData[0]
         fakeValidX = fakeValidX.reshape((1,)+fakeValidX.shape)
 
@@ -163,8 +182,8 @@ class TrioDetector:
         #fakeValidY = fakeValidY.reshape((1,)+fakeValidY.shape)
 
         self.model.fit_generator(
-            self.gen.flow(self.trainData, self.labels, batch_size=24),
-            steps_per_epoch=24, epochs=600, use_multiprocessing=True,
+            self.gen.flow(self.trainData, self.labels, batch_size=steps),
+            steps_per_epoch=steps, epochs=epochs, use_multiprocessing=True,
             callbacks=self.callbacks)
         
         if self.save:
@@ -186,7 +205,7 @@ class TrioDetector:
 if __name__ == "__main__":
     td = TrioDetector(save=True, trainFile="./train/train_big.json")
     td.addWeights()
-    #td.trainModel()
+    td.trainModel(epochs=50, steps=6)
     #td.saveModelArchitecture(file="./full_version2_acc.dat")
     
     path = "./train/train.json"
@@ -208,9 +227,9 @@ if __name__ == "__main__":
     for i in range(len(train)):
         points = td.runModel(train[i])
         image = cv2.resize(cv2.imread(train[i]), (256, 256))
-        pp(points[0].tolist())
         pp([[int(y) for y in x] for x in points[0].tolist()])
         pp(pts[i])
+        pp("")
         
         for p in [[int(y) for y in x] for x in points[0].tolist()]:
             cv2.circle(image, tuple(p), 1, (0, 0, 255), 2)
