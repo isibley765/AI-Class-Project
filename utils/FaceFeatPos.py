@@ -82,14 +82,13 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
                 y = point[1]
                 cv2.circle(image, (x, y), 1, (0, 255, 0), 2)
             cv2.rectangle(image, (64, 64), (570, 380), (0, 255, 0), 2)
-            """
 
             for rect in self.rects:
 
                 points = np.asarray([[point.x, point.y] for point in self.predictor(self.grey, rect).parts()], dtype=np.float32)
                 feats.append(points)
                 
-                """
+                """"""
                 image = deepcopy(self.image_face)
                 (x, y, w, h) = (rect.left(), rect.top(), rect.right() - rect.left(), rect.bottom() - rect.top())
                 cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -111,10 +110,11 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
                     cv2.circle(image, tuple(model[self.modelTrio[i]][:2]), 1, (0, 255, 0), 2)
                     self.show(image)
 
-                """
+                """"""
             self.feats = feats
 
         return self.feats
+            """
     
     def findAngle(self):
         self.rvec = []
@@ -194,8 +194,8 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
             w = self.rects[i].right() - self.rects[i].left()
             h = self.rects[i].bottom() - self.rects[i].top()
 
-            wn = (w * size/180)/2
-            hn = (h * size/180)/2
+            wn = int((w * size/180)/2)
+            hn = int((h * size/180)/2)
 
             center = [self.rects[i].center().x, self.rects[i].center().y]
             tlcorner = [center[0]-wn, center[1]-hn]
@@ -314,8 +314,14 @@ def getFolderImageTrios(folder="/home/rovian/Documents/GitHub/neural/trial/", na
         file.write(json.dumps(out, indent=4))
 
 if __name__ == "__main__":
-    start = "/home/rovian/Downloads/frame_images_DB/"
-    a = os.listdir(start)
+    start = "/home/rovian/Desktop/frame_images_DB/"
+    b = os.listdir(start)
+    a = []
+
+    for i in range(len(b)):
+        if os.path.isdir(os.path.join(start, b[i])):
+            a.append(b[i])
+    del b
     if len(a) > 40:
         a = [a[i] for i in sorted(random.sample(range(len(a)), 40))]
     outType = 'w'

@@ -46,14 +46,14 @@ class TrioDetector:
         # filesave = "{pixel_accuracy:.4e}_"+self.modelWeights[0]
         filesave = self.modelWeights[0]
 
-        self.callbacks = [ModelCheckpoint(filesave, monitor="pixelavg_accuracy", mode="max", save_best_only=True, save_weights_only=True)]
+        self.callbacks = [ModelCheckpoint(filesave, monitor="pixelavg_accuracy", mode="min", save_best_only=True, save_weights_only=True)]
 
         self.prepareTraining()
 
         self.imgSize = (3, 256, 256)
 
         mainIn = layers.Input(shape=self.imgSize, name="TrioIn")
-        conv = layers.Conv2D(32, 6, strides=(2,2), data_format="channels_first")(mainIn)
+        conv = layers.Conv2D(64, 6, strides=(2,2), data_format="channels_first")(mainIn)
 
 
         y1 = self.makePointModel("point1", conv)
@@ -70,9 +70,12 @@ class TrioDetector:
     def makePointModel(self, name, tensIn):
         x = layers.LeakyReLU()(tensIn)
         x = layers.BatchNormalization()(x)
+        x = layers.Conv2D(32, 4, strides=(2,2), data_format="channels_first")(x)
+        x = layers.BatchNormalization()(x)
+        #pp(K.int_shape(x))
 
         size = 1
-        for el in (32, 126, 126):   # found the hard way, couldn't get shape straight out of x easily
+        for el in K.int_shape(x)[1:]:   # dynamic finding of previous layer shape, skipping first None value for batches
             size *= el
         
         x = layers.Reshape((1, size))(x)
@@ -89,18 +92,16 @@ class TrioDetector:
             b = K.sum(K.square(yPred[0][1]-yTrue[0][1]))
             c = K.sum(K.square(yPred[0][2]-yTrue[0][2]))
             return a+b+c
-
-        def pixela_accuracy(yTrue, yPred):
-            a = K.sum(K.square(yPred[0][0]-yTrue[0][0]))
-            return (1.0/a)
-
-        def pixelb_accuracy(yTrue, yPred):
-            b = K.sum(K.square(yPred[0][1]-yTrue[0][1]))
-            return (1.0/b)
-
-        def pixelc_accuracy(yTrue, yPred):
-            c = K.sum(K.square(yPred[0][2]-yTrue[0][2]))
-            return (1.0/c)
+        
+        def pixel_accuracy(index):  # Decided to make a function defining function for simplicity
+            def internal(yTrue, yPred):
+                a = K.sum(K.square(yPred[0][index]-yTrue[0][index]))
+                return (a)
+            return internal
+        
+        pixela_accuracy = pixel_accuracy(0)
+        pixelb_accuracy = pixel_accuracy(1)
+        pixelc_accuracy = pixel_accuracy(2)
         
         def pixelavg_accuracy(yTrue, yPred):
             a = pixela_accuracy(yTrue, yPred)
@@ -118,14 +119,15 @@ class TrioDetector:
         if file is None:
             file = self.trainPath
         
-        if file is None:
-            pp("Can't train without a file to train on")
+        if not type(file) is str:
+            pp("Can't train without a file to train on, trainFile parameter must be string type")
             return
         
         with open(file, "r") as f:
             data = json.loads(f.read())
 
-        for el in data:
+        for el in random.sample(range(len(data)), len(data)):
+            el = data[el]
             img = cv2.imread(el["img"])
             self.trainData.append(img.transpose())   # Only for greyscale images being put on a list later
 
@@ -163,6 +165,7 @@ class TrioDetector:
     
     def saveWeights(self, file="TrioDetectorWeights.dat"):
         self.model.save_weights(file)
+        pp("Successfully saved weights to {}".format(file))
 
     def saveModelArchitecture(self, file="done_arc_TrioDetector.json"):
         out = self.model.to_json()
@@ -174,6 +177,10 @@ class TrioDetector:
         self.model.save(file)
     
     def trainModel(self, epochs=50, steps=24):
+        if not type(self.trainPath) is str:
+            pp("Cannot train on a file, if path to a file hasn't been properly given")
+            return
+
         fakeValidX = self.trainData[0]
         fakeValidX = fakeValidX.reshape((1,)+fakeValidX.shape)
 
@@ -190,7 +197,10 @@ class TrioDetector:
             self.saveWeights()
     
     def runModel(self, file="trial_sets/Ian_Sibley/Ian_Sibley_L.jpg"):
-        image = cv2.resize(cv2.imread(file), (256, 256))
+        if type(file) == str:
+            image = cv2.resize(cv2.imread(file), (256, 256))
+        else:
+            image = file
         img = np.asarray(image.transpose())
         
         return self.model.predict(img.reshape((1,)+img.shape))
@@ -206,16 +216,17 @@ if __name__ == "__main__":
     # source venv bin activate
     td = TrioDetector(save=True, trainFile="./train/train_big_norm.json")
     td.addWeights()
-    #td.trainModel(epochs=20, steps=12)
+    #td.trainModel(epochs=20, steps=24)
     #td.saveModelArchitecture(file="./full_version2_acc.dat")
+
     
-    path = "./train/train.json"
+    path = "./train/test_set_new.json"
 
 
     with open(path, "r") as f:
         data = json.loads(f.read())
     if len(data) > 40:
-        data = [data[i] for i in sorted(random.sample(range(len(data)), 40))]
+        data = [data[i] for i in sorted(random.sample(range(len(data)), 20))]
     train = []
     imgs = []
     pts = []
@@ -232,12 +243,15 @@ if __name__ == "__main__":
         pp(pts[i])
         pp("")
         
+        #for p in pts[i]:
+        #    cv2.circle(image, tuple(p), 1, (255, 0, 0), 2)
         for p in [[int(y) for y in x] for x in points[0].tolist()]:
             cv2.circle(image, tuple(p), 1, (0, 0, 255), 2)
-        for p in pts[i]:
-            cv2.circle(image, tuple(p), 1, (255, 0, 0), 2)
+
+        cv2.imwrite("./pres/image{}.jpg".format(i), image)
         
         td.show(image, delay=500)
+
 
     """
     for name in os.listdir(path):

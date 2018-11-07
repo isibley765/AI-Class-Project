@@ -2,6 +2,7 @@ from pprint import pprint as pp
 from copy import deepcopy
 import numpy as np
 from scipy import ndimage
+import face_recognition as fr
 import math
 import cv2
 import os
@@ -73,7 +74,7 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
             for name in os.listdir(binPath):    # Find images in the bucket subfolders
                 tryImage = os.path.join(binPath, name)
                 if name.endswith((".jpg", ".jpeg", ".png")):
-                    img = cv2.imread(tryImage, cv2.IMREAD_GRAYSCALE)
+                    img = cv2.imread(tryImage)#, cv2.IMREAD_GRAYSCALE)
                     if not img is None:
                         self.imageBins[buck].append(img)
         """
@@ -192,7 +193,7 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
         for image in imageList:
             low = ndimage.gaussian_filter(image, 3)
             highs.append(image - low)
-        
+        cv2.IMREAD_GRAYSCALE
         return highs
 
     # General Inverse Fourier Transform
@@ -234,19 +235,55 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
         cv2.waitKey(delay)
         cv2.destroyWindow(name)
 
+    def compareImageToGroup(self, image, group=None):
+        if group is None:
+            group = self.imageBins
+            pp("HEre")
+
+        if type(image) is str:
+            image = cv2.imread(image)
+            
+        out = []
+        featIn = np.asarray(fr.face_encodings(image))
+        #pp(featIn)
+
+        for key in group.keys():
+            for el in group[key]:
+                featEl = np.asarray(fr.face_encodings(el))
+
+                out.append(fr.compare_faces(featIn, featEl))
+                pp(out[-1])
+
+        return out
+
 if __name__ == "__main__":
     folderSet = TrainSet(path="./trial/Ian_Sibley", name="Ian_Sibley")
 
     folderSet.getImageFolder()
 
+    folderSet.compareImageToGroup("/home/rovian/Pictures/profile.jpg", folderSet.averages["norm"])
+
+    """
+
+    folder = "./spectral/"
+    i = 0
+
     # Test that all images came through
     for el in folderSet.buckets:
         pp(el)
         
-        for image in folderSet.averages["norm"][el]:
-            pp("Average {}:".format(el))
-            folderSet.show(image)
-    """
+        for image in folderSet.averages["nspec"][el]:
+            cv2.imwrite(os.path.join(folder, "image_nspec{}.jpg".format(i)), 20*np.log(np.abs(image)))
+            i += 1
+        
+        for image in folderSet.specBins[el]:
+            cv2.imwrite(os.path.join(folder, "image_specBins{}.jpg".format(i)), 20*np.log(np.abs(image)))
+            i += 1
+        
+        for image in folderSet.averages["spec"][el]:
+            cv2.imwrite(os.path.join(folder, "spec{}.jpg".format(i)), 20*np.log(np.abs(image)))
+            i += 1
+            
         for image in folderSet.snormed[el]:
             folderSet.show(image, 500)
             
