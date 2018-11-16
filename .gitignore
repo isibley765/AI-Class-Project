@@ -3,6 +3,7 @@ buckets/
 *set/
 *sets/
 trial/
+real_try/
 *.zip
 train*/
 *Weights.dat
