@@ -82,13 +82,14 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
                 y = point[1]
                 cv2.circle(image, (x, y), 1, (0, 255, 0), 2)
             cv2.rectangle(image, (64, 64), (570, 380), (0, 255, 0), 2)
+            """
 
             for rect in self.rects:
 
                 points = np.asarray([[point.x, point.y] for point in self.predictor(self.grey, rect).parts()], dtype=np.float32)
                 feats.append(points)
                 
-                """"""
+                """
                 image = deepcopy(self.image_face)
                 (x, y, w, h) = (rect.left(), rect.top(), rect.right() - rect.left(), rect.bottom() - rect.top())
                 cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -110,11 +111,10 @@ class GetFace:  # Presets based on operating in the parent folder of utils, desp
                     cv2.circle(image, tuple(model[self.modelTrio[i]][:2]), 1, (0, 255, 0), 2)
                     self.show(image)
 
-                """"""
+                """
             self.feats = feats
 
         return self.feats
-            """
     
     def findAngle(self):
         self.rvec = []

@@ -1,0 +1,63 @@
+Edie_Falco
+    avg: 1.0
+    norm: 1.0
+
+Romain_Duris
+    avg: 0.9166666666666666
+    norm: 0.9166666666666666
+
+Darla_Moore
+    avg: 1.0
+    norm: 1.0
+
+Tim_Allen
+    avg: 0.875
+    norm: 0.875
+
+Ester_Canadas
+    avg: 1.0
+    norm: 1.0
+
+Rachel_Hunter
+    avg: 1.0
+    norm: 1.0
+
+Larry_Coker
+    avg: 1.0
+    norm: 1.0
+
+Elva_Hsiao
+    avg: 1.0
+    norm: 1.0
+
+Kristy_Curry
+    avg: 1.0
+    norm: 1.0
+
+Hank_Aaron
+    avg: 0.0
+    norm: 0.0
+
+Andy_Garcia
+    avg: 1.0
+    norm: 1.0
+
+Francisco_Maturana
+    avg: 1.0
+    norm: 1.0
+
+Imam_Samudra
+    avg: 0.725
+    norm: 0.725
+
+BB_King
+    avg: 0.9487179487179487
+    norm: 0.9487179487179487
+
+Ian_Wilmut
+    avg: 1.0
+    norm: 1.0
+
+Totals:
+    avg: 0.9618131868131867
+    norm: 0.9618131868131867

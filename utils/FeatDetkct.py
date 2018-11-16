@@ -216,9 +216,10 @@ if __name__ == "__main__":
     # source venv bin activate
     td = TrioDetector(save=True, trainFile="./train/train_big_norm.json")
     td.addWeights()
-    #td.trainModel(epochs=20, steps=24)
+    td.trainModel(epochs=20, steps=24)
     #td.saveModelArchitecture(file="./full_version2_acc.dat")
 
+    """
     
     path = "./train/test_set_new.json"
 
@@ -253,7 +254,6 @@ if __name__ == "__main__":
         td.show(image, delay=500)
 
 
-    """
     for name in os.listdir(path):
         where = os.path.join(path, name)
         for folder in os.listdir(where):

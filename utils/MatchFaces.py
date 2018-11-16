@@ -37,7 +37,7 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
 
         self.refreshBins()
 
-    def refreshBins(self):    
+    def refreshBins(self):    # Sets all look direction bins for each dictionary to an empty list
         for buck in self.buckets:
             self.imageBins[buck] = []
             self.specBins[buck] = []
@@ -238,7 +238,6 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
     def compareImageToGroup(self, image, group=None):
         if group is None:
             group = self.imageBins
-            pp("HEre")
 
         if type(image) is str:
             image = cv2.imread(image)
@@ -246,22 +245,59 @@ class TrainSet: # Gets the normal images in imageBins, and then does averaging, 
         out = []
         featIn = np.asarray(fr.face_encodings(image))
         #pp(featIn)
+        feats = []
 
-        for key in group.keys():
+        for key in group.keys():    # Get the encodings for the element
             for el in group[key]:
                 featEl = np.asarray(fr.face_encodings(el))
+                if featEl.size == 128:
+                    feats.append(featEl)
 
-                out.append(fr.compare_faces(featIn, featEl))
-                pp(out[-1])
+        if featIn.size != 0:
+
+                    #out.append(fr.compare_faces(featIn, featEl))
+            for matchSet in fr.compare_faces(feats, featIn):    # Compare all encodings with desired image encoding
+                size = float(matchSet.size)
+                out.append(np.sum(matchSet)/size)   # Return set of confidence values that it's a match
+        else:
+            out.extend([0 for i in range(len(feats))])
 
         return out
+    
+    def compareGrouptToGroup(self, imgList, group=None):    # Returns a list of matches, x/128 for current fr library implementation
+        res = []
+
+        for img in imgList:
+            res.append(self.compareImageToGroup(img, group=group))
+        
+        return res
+    
+    def distGroupToGroup(self, imgGroup, slfGroup=None):
+        # fr.face_distance(list, oneKnown)
+        if slfGroup is None:
+            slfGroup = self.imageBins
+
+        if not type(imgGroup) is list or not type(imgGroup[0]) is np.ndarray:
+            return None # thou art unworthy            
+        
+        out = {}
+
+        for key in slfGroup:
+            keyRes = []     # 2D list, how close every image is to the entire slfGroup list
+            for el in imgGroup:
+                keyRes.extend(fr.face_distance(slfGroup[key], el))
+            out[key] = keyRes
+        
+        return out
+
 
 if __name__ == "__main__":
     folderSet = TrainSet(path="./trial/Ian_Sibley", name="Ian_Sibley")
 
     folderSet.getImageFolder()
 
-    folderSet.compareImageToGroup("/home/rovian/Pictures/profile.jpg", folderSet.averages["norm"])
+    # folderSet.compareImageToGroup("/home/rovian/Pictures/profile.jpg", folderSet.averages["norm"])
+    pp(folderSet.compareGrouptToGroup(folderSet.imageBins["C"]))
 
     """
 

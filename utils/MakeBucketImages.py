@@ -58,6 +58,15 @@ class FaceBucketMaster:
             return [list40[i] for i in sorted(random.sample(range(len(list40)), 40))]
         else:
             return list40
+    
+    def onlyFolders(self, path, names):
+        out = []
+
+        for el in names:
+            if os.path.isdir(os.path.join(path, el)):
+                out.append(el)
+        
+        return out
 
     """
         Expects a directory labeled by name, with images inside, possibly in subfolders
@@ -72,7 +81,7 @@ class FaceBucketMaster:
             avg = False
             pp("Can't average non-affine corrected images, skipping average")
 
-        names = self.sampleRand40(sorted(os.listdir(path)))
+        names = self.sampleRand40(self.onlyFolders(path, sorted(os.listdir(path))))
         pp("Outputting at {}".format(endFolder))
         
         for name in names:
