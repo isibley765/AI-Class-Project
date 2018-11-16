@@ -1,3 +1,12 @@
+# Ignoring all bucket items
+buckets/
+*set/
+*sets/
+trial/
+*.zip
+train*/
+*Weights.dat
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

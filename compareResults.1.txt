@@ -1,0 +1,91 @@
+Edie_Falco
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Romain_Duris
+    avg: 0.9166666666666666
+    norm: 0.9166666666666666
+    oavg: 0
+    onorm: 0
+
+Darla_Moore
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Tim_Allen
+    avg: 0.875
+    norm: 0.875
+    oavg: 0
+    onorm: 0
+
+Ester_Canadas
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Rachel_Hunter
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Larry_Coker
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Elva_Hsiao
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Kristy_Curry
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Hank_Aaron
+    avg: 0.0
+    norm: 0.0
+    oavg: 0
+    onorm: 0
+
+Andy_Garcia
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Francisco_Maturana
+    avg: 1.0
+    norm: 1.0
+    oavg: 0
+    onorm: 0
+
+Imam_Samudra
+    avg: 0.725
+    norm: 0.725
+    oavg: 0
+    onorm: 0
+
+BB_King
+    avg: 0.9487179487179487
+    norm: 0.9487179487179487
+    oavg: 0
+    onorm: 0
+
+Ian_Wilmut
+    avg: 1.0
+    norm: 1.0
+    oavg: 0.9486607142857143
+    onorm: 0.9486607142857143
+
+Totals:
